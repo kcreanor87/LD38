@@ -22,12 +22,21 @@ public class _manager : MonoBehaviour {
     public Text _levelTxt;
     public Text _bestTxt;
     public float _best;
+    public Sprite _mute;
+    public Sprite _unmute;
+    public Image _muteBtn;
+
+    public AudioSource _music;
 
 	// Use this for initialization
 	void Start () {
         Time.timeScale = 1.0f;
         _timer = _maxTime;
         _inMenu = true;
+        _music = GameObject.Find("Main Camera").GetComponent<AudioSource>();
+        _music.volume = 0;
+        _muteBtn = GameObject.Find("Mute").GetComponent<Image>();
+        _muteBtn.sprite = (AudioListener.pause == true) ? _unmute : _mute;
         _bestTxt = GameObject.Find("BestTimeTxt").GetComponent<Text>();
         var buildIndex = (SceneManager.GetActiveScene().buildIndex - 2);
         var build = (_playerManager._times[buildIndex] == 0.0f) ? _maxTime.ToString("F2") : _playerManager._times[buildIndex].ToString("F2");
@@ -54,15 +63,16 @@ public class _manager : MonoBehaviour {
     }
 	
 	// Update is called once per frame
-	void Update () {
+	void FixedUpdate () {
         if (Input.GetKeyDown(KeyCode.Escape) && !_gameOver) Pause(!_paused);
         if (_inMenu && !_gameOver && !_paused)
         {
             Countdown();
             return;
         }
-        if (!_gameOver) UpdateTimer();        
-	}
+        if (!_gameOver) UpdateTimer(); 
+        if (_gameOver && _music.volume > 0.0f) _music.volume -= 0.0005f;
+    }
 
     void UpdateTimer()
     {
@@ -82,6 +92,7 @@ public class _manager : MonoBehaviour {
     void Countdown()
     {
         _countdown -= Time.deltaTime;
+        _music.volume += 0.0005f;
         var time = Mathf.CeilToInt(_countdown);
         if (_countdown <= 0.0f)
         {
@@ -137,7 +148,7 @@ public class _manager : MonoBehaviour {
         else
         {
             _loseScreen.SetActive(true);
-        }               
+        }
     }
 
     public void ChangeScene(int i)
@@ -169,5 +180,9 @@ public class _manager : MonoBehaviour {
     public void Quit()
     {
         Application.Quit();
+    }
+    public void Mute() {
+        AudioListener.pause = !AudioListener.pause;
+        _muteBtn.sprite = (AudioListener.pause == true) ? _unmute : _mute;
     }
 }
