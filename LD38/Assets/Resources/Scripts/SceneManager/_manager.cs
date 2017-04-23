@@ -17,11 +17,28 @@ public class _manager : MonoBehaviour {
     public bool _gameOver;
     public float _countdown = 3.0f;
     public Text _timeTakenText;
+    public bool _paused;
+    public GameObject _pauseMenu;
+    public Text _levelTxt;
+    public Text _bestTxt;
+    public float _best;
 
 	// Use this for initialization
 	void Start () {
+        Time.timeScale = 1.0f;
         _timer = _maxTime;
         _inMenu = true;
+        _bestTxt = GameObject.Find("BestTimeTxt").GetComponent<Text>();
+        var buildIndex = (SceneManager.GetActiveScene().buildIndex - 2);
+        var build = (_playerManager._times[buildIndex] == 0.0f) ? _maxTime.ToString("F2") : _playerManager._times[buildIndex].ToString("F2");
+        if (_playerManager._times[buildIndex] == 0.0f) _playerManager._times[buildIndex] = _maxTime;
+        _bestTxt.text = "Record: " + build + "s";
+        print(_playerManager._times.Count);
+        _levelTxt = GameObject.Find("LevelTxt").GetComponent<Text>();
+        _levelTxt.text = "Level " + (SceneManager.GetActiveScene().buildIndex - 2);
+        _levelTxt.enabled = false;
+        _pauseMenu = GameObject.Find("PauseMenu");
+        _pauseMenu.SetActive(false);
         _winScreen = GameObject.Find("GameOver_win");
         _winScreen.SetActive(false);
         _loseScreen = GameObject.Find("GameOver_lose");
@@ -38,12 +55,13 @@ public class _manager : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-        if (_inMenu && !_gameOver)
+        if (Input.GetKeyDown(KeyCode.Escape) && !_gameOver) Pause(!_paused);
+        if (_inMenu && !_gameOver && !_paused)
         {
             Countdown();
             return;
         }
-        if (!_gameOver) UpdateTimer();
+        if (!_gameOver) UpdateTimer();        
 	}
 
     void UpdateTimer()
@@ -55,6 +73,10 @@ public class _manager : MonoBehaviour {
         {
             EndLevel(false);
         }
+        else if (_timer <= 5.0f)
+        {
+            _timerTxt.color = Color.red;
+        }
     }
 
     void Countdown()
@@ -65,6 +87,7 @@ public class _manager : MonoBehaviour {
         {
             _countdownTxt.text = "GO!";
             _countdownTxt.fontSize = 150;
+            _bestTxt.enabled = false;
             _inMenu = false;
             StartCoroutine(CloseCountdown());
         }
@@ -76,7 +99,7 @@ public class _manager : MonoBehaviour {
 
     public void UpdateCrates()
     {
-        _cratesRemaining--;
+        _cratesRemaining = GameObject.FindGameObjectsWithTag("Crate").Length-1;
         _cratesRemainingTxt.text = _cratesRemaining.ToString();
         if (_cratesRemaining == 0) EndLevel(true);
     }
@@ -89,14 +112,26 @@ public class _manager : MonoBehaviour {
 
     public void EndLevel(bool victory)
     {
+        _levelTxt.enabled = true;
         _inMenu = true;
         _gameOver = true;
         if (victory)
         {
+            var time = (_maxTime - _timer);
+            if (time < _playerManager._times[SceneManager.GetActiveScene().buildIndex - 2])
+            {
+                _playerManager._times[SceneManager.GetActiveScene().buildIndex - 2] = time;
+                _bestTxt.text = "New Record: " + time.ToString("F2") + "s";
+                _bestTxt.color = Color.green;
+                _playerManager.SaveTimes();
+            }
+            _bestTxt.enabled = true;
             _winScreen.SetActive(true);
-            if (_playerManager._playerLevel < SceneManager.GetActiveScene().buildIndex) _playerManager._playerLevel = SceneManager.GetActiveScene().buildIndex;
-            var time = (_maxTime - _timer).ToString("F2");
-            _timeTakenText.text = "Completed in: " + time + "s";
+            if (_playerManager._playerLevel < SceneManager.GetActiveScene().buildIndex - 1) _playerManager._playerLevel = (SceneManager.GetActiveScene().buildIndex - 1);
+            if (_playerManager._playerLevel == 12) _playerManager._playerLevel = 11;
+            PlayerPrefs.SetInt("PlayerLevel", _playerManager._playerLevel);
+            var timeString = time.ToString("F2");
+            _timeTakenText.text = "Completed in: " + timeString + "s";
             _timeTakenText.enabled = true;
         }
         else
@@ -107,6 +142,32 @@ public class _manager : MonoBehaviour {
 
     public void ChangeScene(int i)
     {
-        SceneManager.LoadScene(i);
+        SceneManager.LoadScene(i + 1);
+        Time.timeScale = 1.0f;
+    }
+
+    public void Restart()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        Time.timeScale = 1.0f;
+    }
+
+    public void Pause(bool paused)
+    {
+        Time.timeScale = (!paused) ? 1.0f : 0.0f;
+        _inMenu = paused;
+        _pauseMenu.SetActive(paused);
+        _paused = paused;
+        _levelTxt.enabled = paused;
+    }
+
+    public void NextLevel()
+    {
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex + 1);
+    }
+
+    public void Quit()
+    {
+        Application.Quit();
     }
 }
